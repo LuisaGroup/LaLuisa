@@ -1,19 +1,23 @@
-mod chat;
+mod agent;
+mod tools;
 
-use chat::Chat;
-use std::io::BufRead;
+use agent::Agent;
+use std::io::{BufRead, Read};
 use std::path::Path;
 
 fn read_input() -> String {
     eprint!("\nYou: ");
     let mut input = String::new();
-    match std::io::stdin().lock().read_line(&mut input) {
-        Ok(_) => input.trim().to_string(),
-        Err(_) => String::new(),
+    loop {
+        let _ = std::io::stdin().lock().read_line(&mut input);
+        if input.trim_start().starts_with(":") || input.ends_with("\n\n") {
+            break;
+        }
     }
+    input.trim().to_string()
 }
 
-fn set_args(chat: &mut Chat, key: &str, value: &str) {
+fn set_args(chat: &mut Agent, key: &str, value: &str) {
     match key.trim() {
         "model" => {
             chat.set_model(value);
@@ -59,7 +63,7 @@ fn set_args(chat: &mut Chat, key: &str, value: &str) {
     }
 }
 
-fn run(chat: &mut Chat) {
+fn run(chat: &mut Agent) {
     chat.clear_messages();
     loop {
         let input = read_input();
@@ -101,7 +105,12 @@ fn run(chat: &mut Chat) {
 }
 
 fn main() {
+    let tools = tools::all_tools();
+    for tool in tools {
+        println!("{}", serde_json::to_string_pretty(&tool.schema()).unwrap());
+    }
+
     let config_file = std::env::args().nth(1).unwrap_or("config.json".to_string());
-    let mut chat = Chat::new_with_config_file(Path::new(&config_file)).unwrap();
-    run(&mut chat);
+    let mut chat_agent = Agent::new_with_config_file(Path::new(&config_file)).unwrap();
+    run(&mut chat_agent);
 }

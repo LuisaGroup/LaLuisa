@@ -7,7 +7,7 @@ use serde_json;
 use std::io::BufRead;
 use tokio;
 
-pub struct Chat {
+pub struct Agent {
     url: String,
     token: String,
     config: serde_json::Value,
@@ -16,7 +16,7 @@ pub struct Chat {
     async_runtime: tokio::runtime::Runtime,
 }
 
-impl Chat {
+impl Agent {
     pub fn new(config: serde_json::Value) -> Self {
         let mut this = Self {
             url: config["url"].as_str().unwrap().to_string(),
