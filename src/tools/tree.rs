@@ -25,8 +25,8 @@ struct TreeToolProtocol {
 
     #[tool_protocol(
         help = "The maximum depth to recurse into the directory.",
-        default = 4,
-        example = 3
+        default = 2,
+        example = 2
     )]
     depth: u32,
 }

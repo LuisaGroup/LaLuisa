@@ -191,9 +191,13 @@ fn main() {
     let help = serde_json::to_string_pretty(&toolset.get_help()).unwrap();
     let config_file = std::env::args().nth(1).unwrap_or("config.json".to_string());
     let mut chat_agent = Agent::new_with_config_file(Path::new(&config_file)).unwrap();
+    let codebase = Path::new(&std::env::args().nth(2).unwrap_or(".".to_string()))
+        .canonicalize()
+        .unwrap();
     let prompt = format!(
         r#"
-I would like you to help write documentation for all source files (including those in the sub-crates) in a codebase.
+I would like you to help write documentation for importance interface, headers, and source files in a codebase:
+{:?}
 
 There are some tools you can use. You can call them by providing the tool name and the arguments in JSON.
 Here are the tools:
@@ -205,17 +209,26 @@ Please output a special heading and than JSON requests following the format (mus
 [[[[INVOKE]]]]
 ```json
 {{
-  "tool_name": {{
+  "<tool-nane>": {{
     "arg1": value1,
     "arg2": value2
   }}
 }}
 ```
 
+For example, if you want to read the contents of a file, you can use the `read` tool like this:
+[[[[INVOKE]]]]
+```json
+{{
+  "read": {{
+    "path": "/path/to/file"
+  }}
+}}
+
 Please note that you can only call **one** tool **once** at a time. Otherwise errors will be returned.
 
 If you would like to document a file, please output a special [[[[DOCUMENT]]]] token and then the
-documentation in Rust standard format:
+documentation in the target language's standard format (or doxygen format as a fallback):
 [[[[DOCUMENT]]]]
 <file name here with path on a new line>
 
@@ -238,15 +251,17 @@ fn foo() {{
 ...
 >>>>>>> FINISH
 
-Note that you **MUST** output "<<<<<<< SEARCH" and "======= REPLACE" and ">>>>>>> FINISH" signs!!!
-And you **MUST** keep the SEARCH part **AS SMALL AS POSSIBLE**, but you cannot mistake the line numbers.
+Note that you **MUST** output the changes in the diff-style, with "<<<<<<< SEARCH" and "======= REPLACE" and ">>>>>>> FINISH" signs!!!
 
-You may make a plan first, determine all the files to be processed.
+And you **MUST** keep the part between "<<<<<<< SEARCH" and "======= REPLACE" AS SMALL AS POSSIBLE!!! DO NOT INCLUDE THE WHOLE FILE CONTENTS!!!
+
+You may want to look at README (if any) and make a plan first, determine all the files to be processed.
 During each step, you should always be checking if you are on the right track.
 Do not leave any files unprocessed. Remember to check and update the plan carefully.
 
 Keep track of the files you have processed and the ones you have not.
 "#,
+        codebase.to_str(),
         help
     );
     println!(
