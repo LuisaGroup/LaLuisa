@@ -128,6 +128,11 @@ fn run(chat: &mut Agent) {
 
 fn parse_tool_invoke_json(input: &str) -> Result<(String, serde_json::Value)> {
     let input = input
+        .rsplit_once("[[[[INVOKE]]]]")
+        .ok_or(anyhow::anyhow!(
+            "Invalid input. Cannot find invoke heading of [[[[INVOKE]]]]"
+        ))?
+        .1
         .split_once("```json")
         .ok_or(anyhow::anyhow!(
             r#"Invalid input. Cannot find invoke begin of "```json"."#
@@ -170,7 +175,9 @@ Here are the tools:
 {}
 
 Now tell me what you want to do and I will return you the output of the tool.
-Please follow the format (must be wrapped in triple backticks):
+Please output the special heading and than follow the format (must be wrapped in triple backticks):
+
+[[[[INVOKE]]]]
 ```json
 {{
   "tool_name": {{
