@@ -6,6 +6,7 @@ use serde_json;
 pub struct ToolArgument {
     pub name: String,
     pub help: String,
+    #[serde(rename = "type")]
     pub type_: String,
     pub required: bool,
     pub default: serde_json::Value,
@@ -21,4 +22,8 @@ pub struct ToolSchema {
 
 pub trait ToolProtocol {
     fn get_schema() -> ToolSchema;
+}
+
+pub fn get_schema<T: ToolProtocol>() -> ToolSchema {
+    T::get_schema()
 }

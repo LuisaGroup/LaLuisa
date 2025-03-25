@@ -2,11 +2,12 @@
 
 use crate::tools::Tool;
 use anyhow::Result;
-use tool_protocol::{ToolArgument, ToolProtocol, ToolSchema};
+use tool_protocol::{get_schema, ToolArgument, ToolProtocol, ToolSchema};
 use tool_protocol_derive::ToolProtocol;
 
 #[derive(ToolProtocol)]
 #[tool_protocol(
+    name = "tree",
     help = "Lists the contents of a directory, optionally with the given recursive depth."
 )]
 struct TreeToolProtocol {
@@ -36,7 +37,7 @@ impl Tree {
 
 impl Tool for Tree {
     fn get_schema(&self) -> ToolSchema {
-        TreeToolProtocol::get_schema()
+        get_schema::<TreeToolProtocol>()
     }
 
     fn invoke(&self, args: &serde_json::Value) -> Result<serde_json::Value> {

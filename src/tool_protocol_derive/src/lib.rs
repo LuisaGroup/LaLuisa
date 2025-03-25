@@ -4,7 +4,9 @@ use quote::quote;
 use serde_json;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{Attribute, Data, DeriveInput, Expr, Fields, Lit, Meta, Token, parse_macro_input};
+use syn::{
+    Attribute, Data, DeriveInput, Expr, Fields, Lit, Meta, MetaNameValue, Token, parse_macro_input,
+};
 
 fn report_error(attr: &Attribute, name: &str) -> proc_macro::TokenStream {
     syn::Error::new(attr.span(), format!("Invalid {} attribute", name))
@@ -12,7 +14,7 @@ fn report_error(attr: &Attribute, name: &str) -> proc_macro::TokenStream {
         .into()
 }
 
-fn create_field_error<T: Spanned>(meta: &T, msg: &str) -> Result<FieldMeta, syn::Error> {
+fn create_attr_error<Meta, T: Spanned>(meta: &T, msg: &str) -> Result<Meta, syn::Error> {
     Err(syn::Error::new(meta.span(), msg))
 }
 
@@ -33,7 +35,22 @@ struct FieldMeta {
     example: Option<Expr>,
 }
 
-fn parse_protocol_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Error> {
+struct StructMeta {
+    name: String,
+    help: String,
+}
+
+fn parse_name_value_string_attr(name_value: &MetaNameValue) -> Result<String, syn::Error> {
+    match &name_value.value {
+        Expr::Lit(lit) => match &lit.lit {
+            Lit::Str(s) => Ok(s.value()),
+            _ => create_attr_error(&name_value.value, "expected string literal"),
+        },
+        _ => create_attr_error(&name_value.value, "expected string literal"),
+    }
+}
+
+fn parse_protocol_field_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Error> {
     let mut help = String::new();
     let mut required = false;
     let mut default = None;
@@ -46,41 +63,25 @@ fn parse_protocol_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Error> {
                 if path.is_ident("required") {
                     required = true;
                 } else {
-                    return create_field_error(&path, "expected one of `required`");
+                    return create_attr_error(&path, "expected one of `required`");
                 }
             }
             Meta::NameValue(name_value) => {
                 if name_value.path.is_ident("help") {
-                    match &name_value.value {
-                        Expr::Lit(lit) => match &lit.lit {
-                            Lit::Str(s) => help = s.value(),
-                            _ => {
-                                return create_field_error(
-                                    &name_value.value,
-                                    "expected string literal",
-                                );
-                            }
-                        },
-                        _ => {
-                            return create_field_error(
-                                &name_value.value,
-                                "expected string literal",
-                            );
-                        }
-                    }
+                    help = parse_name_value_string_attr(&name_value)?;
                 } else if name_value.path.is_ident("required") {
                     match &name_value.value {
                         Expr::Lit(lit) => match &lit.lit {
                             Lit::Bool(b) => required = b.value,
                             _ => {
-                                return create_field_error(
+                                return create_attr_error(
                                     &name_value.value,
                                     "expected boolean literal",
                                 );
                             }
                         },
                         _ => {
-                            return create_field_error(
+                            return create_attr_error(
                                 &name_value.value,
                                 "expected boolean literal",
                             );
@@ -91,32 +92,66 @@ fn parse_protocol_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Error> {
                 } else if name_value.path.is_ident("example") {
                     example = Some(name_value.value);
                 } else {
-                    return create_field_error(
+                    return create_attr_error(
                         &name_value.path,
                         "expected one of `help`, `required`, `default`, `example`",
                     );
                 }
             }
             _ => {
-                return create_field_error(
+                return create_attr_error(
                     &meta,
                     "expected one of `help`, `required`, `default`, `example`",
                 );
             }
         }
     }
-    Ok(FieldMeta {
-        help,
-        required,
-        default,
-        example,
-    })
+    if help.is_empty() {
+        Err(syn::Error::new(attr.span(), "Missing `help` attribute"))
+    } else {
+        Ok(FieldMeta {
+            help,
+            required,
+            default,
+            example,
+        })
+    }
+}
+
+fn parse_protocol_struct_attr_list(attr: &Attribute) -> Result<StructMeta, syn::Error> {
+    let mut name = String::new();
+    let mut help = String::new();
+
+    let nested = attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+    for meta in nested {
+        match meta {
+            // name: string, help: string
+            Meta::NameValue(name_value) => {
+                if name_value.path.is_ident("name") {
+                    name = parse_name_value_string_attr(&name_value)?;
+                } else if name_value.path.is_ident("help") {
+                    help = parse_name_value_string_attr(&name_value)?;
+                } else {
+                    return create_attr_error(&name_value.path, "expected one of `name`, `help`");
+                }
+            }
+            _ => {
+                return create_attr_error(&meta, "expected one of `name`, `help`");
+            }
+        }
+    }
+    if name.is_empty() {
+        Err(syn::Error::new(attr.span(), "Missing `name` attribute"))
+    } else if help.is_empty() {
+        Err(syn::Error::new(attr.span(), "Missing `help` attribute"))
+    } else {
+        Ok(StructMeta { name, help })
+    }
 }
 
 #[proc_macro_derive(ToolProtocol, attributes(tool_protocol))]
 pub fn derive_tool_protocol(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
 
     let fields = match &input.data {
         Data::Struct(data) => match &data.fields {
@@ -151,7 +186,7 @@ pub fn derive_tool_protocol(input: TokenStream) -> TokenStream {
             .iter()
             .find(|a| a.path().is_ident("tool_protocol"))
         {
-            Some(attr) => match parse_protocol_attr_list(attr) {
+            Some(attr) => match parse_protocol_field_attr_list(attr) {
                 Ok(meta) => meta,
                 Err(err) => return err.to_compile_error().into(),
             },
@@ -184,23 +219,31 @@ pub fn derive_tool_protocol(input: TokenStream) -> TokenStream {
         });
     }
 
-    let struct_help = match input
+    let StructMeta {
+        help: struct_help,
+        name: mut struct_name,
+    } = match input
         .attrs
         .iter()
         .find(|a| a.path().is_ident("tool_protocol"))
     {
-        Some(attr) => match parse_protocol_attr_list(attr) {
-            Ok(meta) => meta.help,
+        Some(attr) => match parse_protocol_struct_attr_list(attr) {
+            Ok(meta) => meta,
             Err(err) => return err.to_compile_error().into(),
         },
-        None => String::new(),
+        None => {
+            return syn::Error::new(input.span(), "Missing `tool_protocol` attribute")
+                .to_compile_error()
+                .into();
+        }
     };
 
+    let name = input.ident;
     let expanded = quote! {
         impl ToolProtocol for #name {
             fn get_schema() -> ToolSchema {
                 ToolSchema {
-                    name: stringify!(#name).to_string(),
+                    name: #struct_name.to_string(),
                     help: #struct_help.to_string(),
                     arguments: vec![#(#arguments),*],
                 }
