@@ -74,6 +74,10 @@ fn run_pipeline(agent: &mut Agent, toolset: &tools::ToolSet) {
     loop {
         println!("\n============= LLM RESPONSE =============");
         if let Ok(response) = agent.post() {
+            if response.trim().ends_with("[[[[DONE]]]]") {
+                println!("Done.");
+                break;
+            }
             agent.add_message("assistant", &response);
             let invoke_result = format!(
                 "\n============= TOOL OUTPUT =============\n{}\n",
@@ -185,6 +189,9 @@ Please output the special heading and than follow the format (must be wrapped in
     "arg2": value2
   }}
 }}
+
+If you feel that you have finished your task, please return the output in the following token:
+[[[[DONE]]]]
 ```
 
 Please note that you can only call one tool at a time.
