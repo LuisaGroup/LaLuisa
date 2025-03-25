@@ -298,7 +298,9 @@ pub fn tool(protocol: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             fn invoke(&mut self, args: &serde_json::Value) -> Result<String> {
-                self.invoke(parse_args::<#protocol>(self.get_schema(), args)?)
+                let args = parse_args::<#protocol>(self.get_schema(), args)?;
+                println!("Calling {:?} with {:?}", stringify!(#name), args);
+                self.invoke(args)
             }
         }
     };

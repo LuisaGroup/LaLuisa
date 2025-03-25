@@ -10,16 +10,15 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use std::rc::Rc;
 use tool_protocol::{Tool, ToolSchema};
 
-pub fn create_all_tools() -> Vec<Rc<RefCell<dyn Tool>>> {
+pub fn create_all_tools() -> Vec<Box<RefCell<dyn Tool>>> {
     vec![Read::create(), Tree::create()]
 }
 
 #[derive(Default)]
 pub struct ToolSet {
-    tools: HashMap<String, Rc<RefCell<dyn Tool>>>,
+    tools: HashMap<String, Box<RefCell<dyn Tool>>>,
 }
 
 impl ToolSet {
@@ -27,18 +26,18 @@ impl ToolSet {
         Self::default()
     }
 
-    pub fn register_tool(&mut self, tool: Rc<RefCell<dyn Tool>>) {
+    pub fn register_tool(&mut self, tool: Box<RefCell<dyn Tool>>) {
         let name = tool.borrow().get_schema().name.clone();
         self.tools.insert(name, tool);
     }
 
-    pub fn register_tools<T: IntoIterator<Item = Rc<RefCell<dyn Tool>>>>(&mut self, tools: T) {
+    pub fn register_tools<T: IntoIterator<Item = Box<RefCell<dyn Tool>>>>(&mut self, tools: T) {
         for tool in tools {
             self.register_tool(tool);
         }
     }
 
-    pub fn get_tools(&self) -> &HashMap<String, Rc<RefCell<dyn Tool>>> {
+    pub fn get_tools(&self) -> &HashMap<String, Box<RefCell<dyn Tool>>> {
         &self.tools
     }
 

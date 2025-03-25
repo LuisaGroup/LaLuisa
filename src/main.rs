@@ -177,6 +177,10 @@ Please note that you can only call one tool at a time.
                 tool,
                 serde_json::to_string_pretty(&args).unwrap()
             );
+            if let Ok(output) = toolset.invoke(&tool, &args) {
+                chat_agent.add_message("user", &output);
+                chat_agent.post();
+            }
         }
     }
     run(&mut chat_agent);

@@ -4,13 +4,12 @@ use crate::tools::Tool;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use std::rc::Rc;
 use tool_protocol::{
-    ToolArgument, ToolProtocol, ToolSchema, canonicalize_tool_args, create_schema, parse_args,
+    canonicalize_tool_args, create_schema, parse_args, ToolArgument, ToolProtocol, ToolSchema,
 };
-use tool_protocol_derive::{ToolProtocol, tool};
+use tool_protocol_derive::{tool, ToolProtocol};
 
-#[derive(ToolProtocol, Serialize, Deserialize)]
+#[derive(ToolProtocol, Serialize, Deserialize, Debug)]
 #[tool_protocol(
     name = "tree",
     help = "Lists the contents of a directory, optionally with the given recursive depth."
@@ -38,8 +37,8 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn create() -> Rc<RefCell<dyn Tool>> {
-        Rc::new(RefCell::new(Self {
+    pub fn create() -> Box<RefCell<dyn Tool>> {
+        Box::new(RefCell::new(Self {
             schema: create_schema::<TreeToolProtocol>(),
         }))
     }

@@ -4,12 +4,11 @@ use crate::tools::{Tool, ToolSchema};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use std::rc::Rc;
 use tool_protocol::ToolProtocol;
 use tool_protocol::{ToolArgument, canonicalize_tool_args, create_schema, parse_args};
 use tool_protocol_derive::{ToolProtocol, tool};
 
-#[derive(ToolProtocol, Serialize, Deserialize)]
+#[derive(ToolProtocol, Serialize, Deserialize, Debug)]
 #[tool_protocol(name = "read", help = "Reads the contents of a text file.")]
 struct ReadToolProtocol {
     #[tool_protocol(
@@ -26,8 +25,8 @@ pub struct Read {
 }
 
 impl Read {
-    pub fn create() -> Rc<RefCell<dyn Tool>> {
-        Rc::new(RefCell::new(Self {
+    pub fn create() -> Box<RefCell<dyn Tool>> {
+        Box::new(RefCell::new(Self {
             schema: create_schema::<ReadToolProtocol>(),
         }))
     }
