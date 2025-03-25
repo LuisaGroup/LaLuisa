@@ -64,6 +64,26 @@ fn set_args(chat: &mut Agent, key: &str, value: &str) {
     }
 }
 
+fn invoke_tool(toolset: &tools::ToolSet, request: &str) -> Result<String> {
+    let (tool, args) = parse_tool_invoke_json(request)?;
+    let result = toolset.invoke(&tool, &args)?;
+    Ok(result)
+}
+
+fn run_pipeline(agent: &mut Agent, toolset: &tools::ToolSet) {
+    loop {
+        if let Ok(response) = agent.post() {
+            agent.add_message("assistant", &response);
+            let invoke_result = format!(
+                "============= TOOL OUTPUT =============\n{}\n",
+                invoke_tool(toolset, &response).unwrap_or_else(|e| format!("Error: {}", e))
+            );
+            println!("{}", invoke_result);
+            agent.add_message("user", &invoke_result);
+        }
+    }
+}
+
 fn run(chat: &mut Agent) {
     chat.clear_messages();
     loop {
@@ -169,19 +189,5 @@ Please note that you can only call one tool at a time.
     );
     chat_agent.set_system_prompt(&prompt);
 
-    if let Ok(response) = chat_agent.post() {
-        chat_agent.add_message("assistant", &response);
-        if let Ok((tool, args)) = parse_tool_invoke_json(&response) {
-            println!(
-                "\n============= DEBUG =============\ncalling tool {:?} with args:\n{}\n=================================\n",
-                tool,
-                serde_json::to_string_pretty(&args).unwrap()
-            );
-            if let Ok(output) = toolset.invoke(&tool, &args) {
-                chat_agent.add_message("user", &output);
-                chat_agent.post();
-            }
-        }
-    }
-    run(&mut chat_agent);
+    run_pipeline(&mut chat_agent, &toolset);
 }

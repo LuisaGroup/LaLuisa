@@ -1,0 +1,5 @@
+{
+    "url": "https://api.siliconflow.cn/v1/chat/completions",
+    "model": "Pro/deepseek-ai/DeepSeek-V3",
+    "token": "<<<YOUR TOKEN HERE>>>"
+}

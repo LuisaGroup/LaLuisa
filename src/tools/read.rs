@@ -32,6 +32,8 @@ impl Read {
     }
 
     pub fn invoke(&mut self, args: ReadToolProtocol) -> Result<String> {
-        todo!()
+        let path = args.path;
+        let contents = std::fs::read_to_string(&path)?;
+        Ok(contents)
     }
 }
