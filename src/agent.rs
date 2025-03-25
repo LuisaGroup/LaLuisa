@@ -85,7 +85,7 @@ impl Agent {
             .block_on(get_model_list(&self.url, &self.token))
             .unwrap_or_default()
     }
-    
+
     pub fn get_config(&self) -> &serde_json::Value {
         &self.config
     }
