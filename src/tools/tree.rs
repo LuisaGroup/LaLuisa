@@ -2,10 +2,15 @@
 
 use crate::tools::Tool;
 use anyhow::Result;
-use tool_protocol::{ToolArgument, ToolProtocol, ToolSchema, get_schema};
-use tool_protocol_derive::ToolProtocol;
+use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
+use tool_protocol::{
+    ToolArgument, ToolProtocol, ToolSchema, canonicalize_tool_args, create_schema, parse_args,
+};
+use tool_protocol_derive::{ToolProtocol, tool};
 
-#[derive(ToolProtocol)]
+#[derive(ToolProtocol, Serialize, Deserialize)]
 #[tool_protocol(
     name = "tree",
     help = "Lists the contents of a directory, optionally with the given recursive depth."
@@ -27,22 +32,19 @@ struct TreeToolProtocol {
     depth: u32,
 }
 
-pub(crate) struct Tree {
+#[tool(TreeToolProtocol)]
+pub struct Tree {
     schema: ToolSchema,
 }
 
-impl Tool for Tree {
-    fn create() -> Box<dyn Tool> {
-        Box::new(Self {
-            schema: get_schema::<TreeToolProtocol>(),
-        })
+impl Tree {
+    pub fn create() -> Rc<RefCell<dyn Tool>> {
+        Rc::new(RefCell::new(Self {
+            schema: create_schema::<TreeToolProtocol>(),
+        }))
     }
 
-    fn get_schema(&self) -> &ToolSchema {
-        &self.schema
-    }
-
-    fn invoke(&self, args: &serde_json::Value) -> Result<String> {
-        Err(anyhow::anyhow!("Not implemented"))
+    pub fn invoke(&mut self, args: TreeToolProtocol) -> Result<String> {
+        todo!()
     }
 }

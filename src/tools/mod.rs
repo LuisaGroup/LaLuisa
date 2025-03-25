@@ -2,55 +2,57 @@ mod patch;
 mod read;
 mod tree;
 
+pub use read::Read;
+use std::cell::RefCell;
+pub use tree::Tree;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use std::iter::Map;
+use std::rc::Rc;
+use tool_protocol::{Tool, ToolSchema};
 
-use tool_protocol::ToolSchema;
-
-pub trait Tool {
-    fn create() -> Box<dyn Tool>
-    where
-        Self: Sized;
-    fn get_schema(&self) -> &ToolSchema;
-    fn invoke(&self, args: &serde_json::Value) -> Result<String>;
+pub fn create_all_tools() -> Vec<Rc<RefCell<dyn Tool>>> {
+    vec![Read::create(), Tree::create()]
 }
 
-fn all_tools() -> Vec<Box<dyn Tool>> {
-    vec![read::Read::create(), tree::Tree::create()]
-}
-
+#[derive(Default)]
 pub struct ToolSet {
-    tools: HashMap<String, Box<dyn Tool>>,
+    tools: HashMap<String, Rc<RefCell<dyn Tool>>>,
 }
 
 impl ToolSet {
     pub fn new() -> Self {
-        Self {
-            tools: all_tools()
-                .into_iter()
-                .map(|tool| (tool.get_schema().name.clone(), tool))
-                .collect(),
+        Self::default()
+    }
+
+    pub fn register_tool(&mut self, tool: Rc<RefCell<dyn Tool>>) {
+        let name = tool.borrow().get_schema().name.clone();
+        self.tools.insert(name, tool);
+    }
+
+    pub fn register_tools<T: IntoIterator<Item = Rc<RefCell<dyn Tool>>>>(&mut self, tools: T) {
+        for tool in tools {
+            self.register_tool(tool);
         }
     }
 
-    pub fn get_tools(&self) -> &HashMap<String, Box<dyn Tool>> {
+    pub fn get_tools(&self) -> &HashMap<String, Rc<RefCell<dyn Tool>>> {
         &self.tools
     }
 
     pub fn get_help(&self) -> serde_json::Value {
         let mut help = serde_json::Map::new();
         for (name, tool) in &self.tools {
-            help.insert(name.clone(), tool.get_schema().get_help());
+            help.insert(name.clone(), tool.borrow().get_schema().get_help());
         }
         serde_json::Value::Object(help)
     }
 
     pub fn invoke(&self, name: &str, args: &serde_json::Value) -> Result<String> {
         if let Some(tool) = self.tools.get(name) {
-            tool.invoke(args)
+            tool.try_borrow_mut()?.invoke(args)
         } else {
             Err(anyhow::anyhow!("Unknown tool: {}", name))
         }

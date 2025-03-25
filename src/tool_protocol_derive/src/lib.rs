@@ -113,6 +113,11 @@ fn parse_protocol_field_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Er
             attr.span(),
             "Missing `default` or `example` attribute for required field",
         ))
+    } else if !required && default.is_none() {
+        Err(syn::Error::new(
+            attr.span(),
+            "Missing `default` attribute for optional field",
+        ))
     } else {
         Ok(FieldMeta {
             help,
@@ -245,13 +250,55 @@ pub fn derive_tool_protocol(input: TokenStream) -> TokenStream {
 
     let name = input.ident;
     let expanded = quote! {
-        impl ToolProtocol for #name {
-            fn get_schema() -> ToolSchema {
+        impl ToolProtocol<#name> for #name {
+            fn create_schema() -> ToolSchema {
                 ToolSchema {
                     name: #struct_name.to_string(),
                     help: #struct_help.to_string(),
                     arguments: vec![#(#arguments),*],
                 }
+            }
+            fn parse_args(schema: &ToolSchema, args: &serde_json::Value) -> Result<#name> {
+                let args = canonicalize_tool_args(schema, args)?;
+                serde_json::from_value(args).map_err(Into::into)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+// #[tool(SomeProtocol)]
+// pub struct SomeTool {
+//     schema: ToolSchema,
+// }
+// expends to:
+// impl Tool for SomeTool {
+//     fn get_schema() -> &ToolSchema { &self.schema }
+//     fn invoke(&mut self, args: &serde_json::Value) -> Result<String> {
+//         self.invoke(parse_args::<SomeProtocol>(self.get_schema(), args)?)
+//     }
+// }
+#[proc_macro_attribute]
+pub fn tool(protocol: TokenStream, item: TokenStream) -> TokenStream {
+    let protocol = parse_macro_input!(protocol as syn::Ident);
+    let item = parse_macro_input!(item as syn::ItemStruct);
+
+    let name = &item.ident;
+    let schema = quote! {
+        create_schema::<#protocol>()
+    };
+
+    let expanded = quote! {
+        #item
+
+        impl Tool for #name {
+            fn get_schema(&self) -> &ToolSchema {
+                &self.schema
+            }
+
+            fn invoke(&mut self, args: &serde_json::Value) -> Result<String> {
+                self.invoke(parse_args::<#protocol>(self.get_schema(), args)?)
             }
         }
     };

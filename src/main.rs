@@ -134,7 +134,10 @@ fn parse_tool_invoke_json(input: &str) -> Result<(String, serde_json::Value)> {
 }
 
 fn main() {
-    let toolset = tools::ToolSet::new();
+    let mut toolset = tools::ToolSet::new();
+    toolset.register_tool(tools::Tree::create());
+    toolset.register_tool(tools::Read::create());
+
     let help = serde_json::to_string_pretty(&toolset.get_help()).unwrap();
     let config_file = std::env::args().nth(1).unwrap_or("config.json".to_string());
     let mut chat_agent = Agent::new_with_config_file(Path::new(&config_file)).unwrap();

@@ -72,10 +72,39 @@ impl ToolSchema {
     }
 }
 
-pub trait ToolProtocol {
-    fn get_schema() -> ToolSchema;
+pub fn canonicalize_tool_args(
+    schema: &ToolSchema,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value> {
+    let mut cargs = serde_json::Map::new();
+    for arg in &schema.arguments {
+        if let Some(value) = args.get(&arg.name) {
+            cargs.insert(arg.name.clone(), value.clone());
+        } else if !arg.default.is_null() {
+            cargs.insert(arg.name.clone(), arg.default.clone());
+        } else if arg.required {
+            return Err(anyhow::anyhow!("Missing required argument: {}", arg.name));
+        }
+    }
+    Ok(serde_json::Value::Object(cargs))
 }
 
-pub fn get_schema<T: ToolProtocol>() -> ToolSchema {
-    T::get_schema()
+pub trait ToolProtocol<T> {
+    fn create_schema() -> ToolSchema;
+    fn parse_args(schema: &ToolSchema, args: &serde_json::Value) -> Result<T>
+    where
+        T: Sized;
+}
+
+pub fn create_schema<T: ToolProtocol<T>>() -> ToolSchema {
+    T::create_schema()
+}
+
+pub fn parse_args<T: ToolProtocol<T>>(schema: &ToolSchema, args: &serde_json::Value) -> Result<T> {
+    T::parse_args(schema, args)
+}
+
+pub trait Tool {
+    fn get_schema(&self) -> &ToolSchema;
+    fn invoke(&mut self, args: &serde_json::Value) -> Result<String>;
 }
