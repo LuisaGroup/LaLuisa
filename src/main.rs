@@ -65,9 +65,26 @@ fn set_args(chat: &mut Agent, key: &str, value: &str) {
 }
 
 fn invoke_tool(toolset: &tools::ToolSet, request: &str) -> Result<String> {
-    let (tool, args) = parse_tool_invoke_json(request)?;
-    let result = toolset.invoke(&tool, &args)?;
-    Ok(result)
+    if let Ok((tool, args)) = parse_tool_invoke_json(request) {
+        let result = toolset.invoke(&tool, &args)?;
+        Ok(result)
+    } else if request.contains("[[[[DOCUMENT]]]]") {
+        Ok(r#"File has been documented. Please keep up the good work!
+
+Or, if you think you have finished your task and want to stop,
+please just output a special token [[[[DONE]]]]."#
+            .to_string())
+    } else {
+        Err(anyhow::anyhow!(
+            r#"
+I cannot find correct tool name or arguments in the request.
+Please check the format of the request and try again.
+
+If you think you have finished your task and want to stop,
+please just output a special token [[[[DONE]]]].
+"#
+        ))
+    }
 }
 
 fn run_pipeline(agent: &mut Agent, toolset: &tools::ToolSet) {
@@ -173,13 +190,14 @@ fn main() {
     let mut chat_agent = Agent::new_with_config_file(Path::new(&config_file)).unwrap();
     let prompt = format!(
         r#"
-I would like you to help read a codebase. There are some tools you can use.
-You can call them by providing the tool name and the arguments in JSON.
+I would like you to help write documentation for all source files (including those in the sub-crates) in a codebase.
+
+There are some tools you can use. You can call them by providing the tool name and the arguments in JSON.
 Here are the tools:
 {}
 
 Now tell me what you want to do and I will return you the output of the tool.
-Please output the special heading and than follow the format (must be wrapped in triple backticks):
+Please output a special heading and than JSON requests following the format (must be wrapped in triple backticks):
 
 [[[[INVOKE]]]]
 ```json
@@ -190,11 +208,14 @@ Please output the special heading and than follow the format (must be wrapped in
   }}
 }}
 
-If you feel that you have finished your task, please return the output in the following token:
-[[[[DONE]]]]
+If you would like to document a file, please output a special heading and than the documentation in Rust standard format:
+[[[[DOCUMENT]]]]
+<file name here with path on a new line>
+
+Some documentation here...
 ```
 
-Please note that you can only call one tool at a time.
+Please note that you can only call **one** tool **once** at a time. Otherwise errors will be returned.
 "#,
         help
     );
