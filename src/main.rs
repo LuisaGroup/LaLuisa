@@ -72,10 +72,11 @@ fn invoke_tool(toolset: &tools::ToolSet, request: &str) -> Result<String> {
 
 fn run_pipeline(agent: &mut Agent, toolset: &tools::ToolSet) {
     loop {
+        println!("\n============= LLM RESPONSE =============");
         if let Ok(response) = agent.post() {
             agent.add_message("assistant", &response);
             let invoke_result = format!(
-                "============= TOOL OUTPUT =============\n{}\n",
+                "\n============= TOOL OUTPUT =============\n{}\n",
                 invoke_tool(toolset, &response).unwrap_or_else(|e| format!("Error: {}", e))
             );
             println!("{}", invoke_result);
