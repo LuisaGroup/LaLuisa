@@ -82,6 +82,9 @@ Please check the format of the request and try again.
 
 If you think you have finished your task and want to stop,
 please just output a special token [[[[DONE]]]].
+
+Otherwise, please either continue to use the tool with [[[[INVOKE]]]] or
+write the documentation with [[[[DOCUMENT]]]] without outputting any [[[[DONE]]]].
 "#
         ))
     }
@@ -92,7 +95,7 @@ fn run_pipeline(agent: &mut Agent, toolset: &tools::ToolSet) {
         println!("\n============= LLM RESPONSE =============");
         if let Ok(response) = agent.post() {
             if response.trim().ends_with("[[[[DONE]]]]") {
-                println!("Done.");
+                println!("\n\nDone.");
                 break;
             }
             agent.add_message("assistant", &response);
@@ -207,15 +210,42 @@ Please output a special heading and than JSON requests following the format (mus
     "arg2": value2
   }}
 }}
-
-If you would like to document a file, please output a special heading and than the documentation in Rust standard format:
-[[[[DOCUMENT]]]]
-<file name here with path on a new line>
-
-Some documentation here...
 ```
 
 Please note that you can only call **one** tool **once** at a time. Otherwise errors will be returned.
+
+If you would like to document a file, please output a special [[[[DOCUMENT]]]] token and then the
+documentation in Rust standard format:
+[[[[DOCUMENT]]]]
+<file name here with path on a new line>
+
+<<<<<<< SEARCH
+LINE 00001: mod xxx;
+LINE 00002: use yyyy;
+======= REPLACE
+/// Some description here
+/// Some description here
+mod xxx;
+use yyyy;
+>>>>>>> FINISH
+
+<<<<<<< SEARCH
+LINE 00123: fn foo() {{
+======= REPLACE
+/// Some description here
+/// Some description here
+fn foo() {{
+...
+>>>>>>> FINISH
+
+Note that you **MUST** output "<<<<<<< SEARCH" and "======= REPLACE" and ">>>>>>> FINISH" signs!!!
+And you **MUST** keep the SEARCH part **AS SMALL AS POSSIBLE**, but you cannot mistake the line numbers.
+
+You may make a plan first, determine all the files to be processed.
+During each step, you should always be checking if you are on the right track.
+Do not leave any files unprocessed. Remember to check and update the plan carefully.
+
+Keep track of the files you have processed and the ones you have not.
 "#,
         help
     );

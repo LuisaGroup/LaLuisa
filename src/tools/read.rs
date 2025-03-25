@@ -33,7 +33,15 @@ impl Read {
 
     pub fn invoke(&mut self, args: ReadToolProtocol) -> Result<String> {
         let path = args.path;
-        let contents = std::fs::read_to_string(&path)?;
+        let contents = std::fs::read_to_string(&path)?
+            .lines()
+            .into_iter()
+            .enumerate()
+            .map(|(i, line)| {
+                format!("LINE {:05}: {}", i + 1, line)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
         Ok(contents)
     }
 }
