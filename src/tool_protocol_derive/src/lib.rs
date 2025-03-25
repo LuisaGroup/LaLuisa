@@ -8,12 +8,6 @@ use syn::{
     Attribute, Data, DeriveInput, Expr, Fields, Lit, Meta, MetaNameValue, Token, parse_macro_input,
 };
 
-fn report_error(attr: &Attribute, name: &str) -> proc_macro::TokenStream {
-    syn::Error::new(attr.span(), format!("Invalid {} attribute", name))
-        .to_compile_error()
-        .into()
-}
-
 fn create_attr_error<Meta, T: Spanned>(meta: &T, msg: &str) -> Result<Meta, syn::Error> {
     Err(syn::Error::new(meta.span(), msg))
 }

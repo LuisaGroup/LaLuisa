@@ -5,9 +5,9 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use tool_protocol::{
-    canonicalize_tool_args, create_schema, parse_args, ToolArgument, ToolProtocol, ToolSchema,
+    ToolArgument, ToolProtocol, ToolSchema, canonicalize_tool_args, create_schema, parse_args,
 };
-use tool_protocol_derive::{tool, ToolProtocol};
+use tool_protocol_derive::{ToolProtocol, tool};
 
 #[derive(ToolProtocol, Serialize, Deserialize, Debug)]
 #[tool_protocol(
