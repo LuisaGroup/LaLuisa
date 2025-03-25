@@ -1,42 +1,42 @@
 // this module implements the tree command, which lists the contents of a directory.
 
-use crate::tools::{Schema, Tool};
+use crate::tools::Tool;
 use anyhow::Result;
+use tool_protocol::{ToolArgument, ToolProtocol, ToolSchema};
+use tool_protocol_derive::ToolProtocol;
 
-pub(crate) struct Tree {
-    desc: Schema,
+#[derive(ToolProtocol)]
+#[tool_protocol(
+    help = "Lists the contents of a directory, optionally with the given recursive depth."
+)]
+struct TreeToolProtocol {
+    #[tool_protocol(
+        help = "The path to the directory to list.",
+        example = "/path/to/directory",
+        required = true,
+        default = "."
+    )]
+    path: String,
+
+    #[tool_protocol(
+        help = "The maximum depth to recurse into the directory.",
+        default = 0,
+        example = 2
+    )]
+    depth: u32,
 }
+
+pub(crate) struct Tree;
 
 impl Tree {
     pub fn new() -> Self {
-        Self {
-            desc: Schema {
-                name: "tree".to_string(),
-                brief: "List the contents of a directory with a tree structure".to_string(),
-                args: serde_json::json!({
-                    "path": {
-                        "type": "string",
-                        "description": "The path to the directory",
-                        "required": true,
-                    },
-                    "depth": {
-                        "type": "integer",
-                        "description": "The maximum depth of the tree (default: 0, unlimited)",
-                        "default": 0,
-                    }
-                }),
-                returns: serde_json::json!({
-                    "type": "object",
-                    "description": "The directory tree structure as a JSON object",
-                }),
-            },
-        }
+        Self {}
     }
 }
 
 impl Tool for Tree {
-    fn schema(&self) -> &Schema {
-        &self.desc
+    fn get_schema(&self) -> ToolSchema {
+        TreeToolProtocol::get_schema()
     }
 
     fn invoke(&self, args: &serde_json::Value) -> Result<serde_json::Value> {

@@ -5,16 +5,10 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Schema {
-    name: String,
-    brief: String,
-    args: serde_json::Value,
-    returns: serde_json::Value,
-}
+use tool_protocol::ToolSchema;
 
 pub trait Tool {
-    fn schema(&self) -> &Schema;
+    fn get_schema(&self) -> ToolSchema;
     fn invoke(&self, args: &serde_json::Value) -> Result<serde_json::Value>;
 }
 

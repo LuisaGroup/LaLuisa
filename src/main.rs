@@ -107,7 +107,9 @@ fn run(chat: &mut Agent) {
 fn main() {
     let tools = tools::all_tools();
     for tool in tools {
-        println!("{}", serde_json::to_string_pretty(&tool.schema()).unwrap());
+        let json = serde_json::json!(tool.get_schema());
+        // pretty print the json
+        println!("{}", serde_json::to_string_pretty(&json).unwrap());
     }
 
     let config_file = std::env::args().nth(1).unwrap_or("config.json".to_string());

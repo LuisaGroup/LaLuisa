@@ -1,37 +1,35 @@
 // this module implements the read command, which reads the contents of a text file.
 
-use crate::tools::{Schema, Tool};
+use tool_protocol::ToolArgument;
+use tool_protocol::ToolProtocol;
+use crate::tools::{Tool, ToolSchema};
 use anyhow::Result;
+use tool_protocol_derive::ToolProtocol;
+
+#[derive(ToolProtocol)]
+#[tool_protocol(help = "Reads the contents of a text file.")]
+struct ReadToolProtocol {
+    #[tool_protocol(
+        help = "The path to the file to read.",
+        example = "/path/to/file",
+        required = true
+    )]
+    path: String,
+}
 
 pub(crate) struct Read {
-    desc: Schema,
+    // desc: ToolSchema,
 }
 
 impl Read {
     pub fn new() -> Self {
-        Self {
-            desc: Schema {
-                name: "read".to_string(),
-                brief: "Read the contents of a text file".to_string(),
-                args: serde_json::json!({
-                    "path": {
-                        "type": "string",
-                        "description": "The path to the text file",
-                        "required": true,
-                    }
-                }),
-                returns: serde_json::json!({
-                    "type": "string",
-                    "description": "The contents of the text file",
-                }),
-            },
-        }
+        Self {}
     }
 }
 
 impl Tool for Read {
-    fn schema(&self) -> &Schema {
-        &self.desc
+    fn get_schema(&self) -> ToolSchema {
+        ReadToolProtocol::get_schema()
     }
 
     fn invoke(&self, args: &serde_json::Value) -> Result<serde_json::Value> {

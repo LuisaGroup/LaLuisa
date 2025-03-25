@@ -1,5 +1,5 @@
 [package]
-name = "tool_schema_derive"
+name = "tool_protocol_derive"
 version = "0.1.0"
 edition = "2024"
 
@@ -10,3 +10,5 @@ proc-macro = true
 proc-macro2 = "1.0.94"
 syn = "2.0.100"
 quote = "1.0.9"
+anyhow = "1.0.97"
+serde_json = "1.0.140"
