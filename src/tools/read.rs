@@ -18,23 +18,23 @@ struct ReadToolProtocol {
 }
 
 pub(crate) struct Read {
-    // desc: ToolSchema,
-}
-
-impl Read {
-    pub fn new() -> Self {
-        Self {}
-    }
+    schema: ToolSchema,
 }
 
 impl Tool for Read {
-    fn get_schema(&self) -> ToolSchema {
-        get_schema::<ReadToolProtocol>()
+    fn create() -> Box<dyn Tool> {
+        Box::new(Self {
+            schema: get_schema::<ReadToolProtocol>(),
+        })
     }
 
-    fn invoke(&self, args: &serde_json::Value) -> Result<serde_json::Value> {
+    fn get_schema(&self) -> &ToolSchema {
+        &self.schema
+    }
+
+    fn invoke(&self, args: &serde_json::Value) -> Result<String> {
         let path = args["path"].as_str().unwrap();
         let content = std::fs::read_to_string(path)?;
-        Ok(serde_json::json!(content))
+        Ok(content)
     }
 }

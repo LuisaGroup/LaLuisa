@@ -113,6 +113,10 @@ impl Agent {
     pub fn set_max_tokens(&mut self, max_tokens: u64) {
         self.config["max_tokens"] = max_tokens.into()
     }
+
+    pub fn set_system_prompt(&mut self, system_prompt: &str) {
+        self.system_prompt = system_prompt.to_string()
+    }
 }
 
 struct Reply {

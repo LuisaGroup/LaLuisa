@@ -108,6 +108,11 @@ fn parse_protocol_field_attr_list(attr: &Attribute) -> Result<FieldMeta, syn::Er
     }
     if help.is_empty() {
         Err(syn::Error::new(attr.span(), "Missing `help` attribute"))
+    } else if required && default.is_none() && example.is_none() {
+        Err(syn::Error::new(
+            attr.span(),
+            "Missing `default` or `example` attribute for required field",
+        ))
     } else {
         Ok(FieldMeta {
             help,

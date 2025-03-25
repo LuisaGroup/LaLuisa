@@ -2,6 +2,7 @@ mod agent;
 mod tools;
 
 use agent::Agent;
+use anyhow::Result;
 use std::io::{BufRead, Read};
 use std::path::Path;
 
@@ -104,15 +105,76 @@ fn run(chat: &mut Agent) {
     }
 }
 
-fn main() {
-    let tools = tools::all_tools();
-    for tool in tools {
-        let json = serde_json::json!(tool.get_schema());
-        // pretty print the json
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+fn parse_tool_invoke_json(input: &str) -> Result<(String, serde_json::Value)> {
+    let input = input
+        .split_once("```json")
+        .ok_or(anyhow::anyhow!(
+            r#"Invalid input. Cannot find invoke begin of "```json"."#
+        ))?
+        .1
+        .rsplit_once("```")
+        .ok_or(anyhow::anyhow!(
+            r#"Invalid input. Cannot find invoke end of "```"."#
+        ))?
+        .0;
+    let invoke: serde_json::Value = serde_json::from_str(input)?;
+    let invoke = invoke
+        .as_object()
+        .ok_or(anyhow::anyhow!("Input is not a valid JSON object"))?;
+    if invoke.len() != 1 {
+        Err(anyhow::anyhow!(
+            "Invalid input. You can only call one tool at a time."
+        ))
+    } else {
+        let (tool, args) = invoke.iter().next().ok_or(anyhow::anyhow!(
+            "Invalid input. JSON object must have exactly one key"
+        ))?;
+        Ok((tool.clone(), args.clone()))
     }
+}
 
+fn main() {
+    let toolset = tools::ToolSet::new();
+    let help = serde_json::to_string_pretty(&toolset.get_help()).unwrap();
     let config_file = std::env::args().nth(1).unwrap_or("config.json".to_string());
     let mut chat_agent = Agent::new_with_config_file(Path::new(&config_file)).unwrap();
+    let prompt = format!(
+        r#"
+I would like you to help read a codebase. There are some tools you can use.
+You can call them by providing the tool name and the arguments in JSON.
+Here are the tools:
+{}
+
+Now tell me what you want to do and I will return you the output of the tool.
+Please follow the format (must be wrapped in triple backticks):
+```json
+{{
+  "tool_name": {{
+    "arg1": value1,
+    "arg2": value2
+  }}
+}}
+```
+
+Please note that you can only call one tool at a time.
+"#,
+        help
+    );
+    println!(
+        "\n============= PROMPT =============\n{}\n==================================\n",
+        prompt
+    );
+    chat_agent.set_system_prompt(&prompt);
+
+    if let Ok(response) = chat_agent.post() {
+        chat_agent.add_message("assistant", &response);
+        if let Ok((tool, args)) = parse_tool_invoke_json(&response) {
+            println!(
+                "\n============= DEBUG =============\ncalling tool {:?} with args:\n{}\n=================================\n",
+                tool,
+                serde_json::to_string_pretty(&args).unwrap()
+            );
+        }
+    }
     run(&mut chat_agent);
 }
